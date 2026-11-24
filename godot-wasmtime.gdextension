@@ -1,0 +1,15 @@
+[configuration]
+
+entry_symbol = "gdext_rust_init"
+compatibility_minimum = 4.4
+reloadable = true
+
+
+[libraries]
+
+linux.debug.x86_64 = "target/debug/libgodot_wasmtime.so"
+linux.release.x86_64 = "target/release/libgodot_wasmtime.so"
+macos.debug = "target/debug/libgodot_wasmtime.dylib"
+macos.release = "target/release/libgodot_wasmtime.dylib"
+windows.debug.x86_64 = "target/debug/godot_wasmtime.dll"
+windows.release.x86_64 = "target/release/godot_wasmtime.dll"
