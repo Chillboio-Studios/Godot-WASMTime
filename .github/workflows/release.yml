@@ -75,18 +75,20 @@ jobs:
           path: dist/
 
   macos-x86_64:
-    runs-on: macos-13
+    # Intel runners (macos-13) are retired; the macOS SDK is universal so we
+    # cross-compile x86_64 from the ARM runner instead.
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: x86_64-apple-darwin
       - name: Build
-        run: cargo build --release --locked
+        run: cargo build --release --locked --target x86_64-apple-darwin
       - name: Stage artifact
         run: |
           mkdir -p dist
-          cp target/release/libgodot_wasmtime.dylib dist/libgodot_wasmtime.macos.x86_64.dylib
+          cp target/x86_64-apple-darwin/release/libgodot_wasmtime.dylib dist/libgodot_wasmtime.macos.x86_64.dylib
       - uses: actions/upload-artifact@v4
         with:
           name: macos-x86_64
@@ -161,6 +163,12 @@ jobs:
         env:
           CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER: ${{ env.ANDROID_NDK_HOME }}/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android${{ env.ANDROID_API_LEVEL }}-clang
           CARGO_TARGET_X86_64_LINUX_ANDROID_LINKER: ${{ env.ANDROID_NDK_HOME }}/toolchains/llvm/prebuilt/linux-x86_64/bin/x86_64-linux-android${{ env.ANDROID_API_LEVEL }}-clang
+          CC_aarch64_linux_android: ${{ env.ANDROID_NDK_HOME }}/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android${{ env.ANDROID_API_LEVEL }}-clang
+          CXX_aarch64_linux_android: ${{ env.ANDROID_NDK_HOME }}/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android${{ env.ANDROID_API_LEVEL }}-clang++
+          AR_aarch64_linux_android: ${{ env.ANDROID_NDK_HOME }}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar
+          CC_x86_64_linux_android: ${{ env.ANDROID_NDK_HOME }}/toolchains/llvm/prebuilt/linux-x86_64/bin/x86_64-linux-android${{ env.ANDROID_API_LEVEL }}-clang
+          CXX_x86_64_linux_android: ${{ env.ANDROID_NDK_HOME }}/toolchains/llvm/prebuilt/linux-x86_64/bin/x86_64-linux-android${{ env.ANDROID_API_LEVEL }}-clang++
+          AR_x86_64_linux_android: ${{ env.ANDROID_NDK_HOME }}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar
         run: cargo build --release --locked --target ${{ matrix.target }}
       - name: Stage artifact
         run: |
