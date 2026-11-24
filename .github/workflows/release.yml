@@ -4,6 +4,11 @@ on:
   push:
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version (e.g. 0.1.0) — creates a GitHub release with this tag"
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -115,13 +120,14 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-unknown-linux-gnu
-      - name: Install cargo-zigbuild + zig
-        uses: mlugg/setup-zig@v1
-        with:
-          version: 0.15.2
-      - run: cargo install cargo-zigbuild --locked
+      - name: Install aarch64 cross toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
       - name: Build
-        run: cargo zigbuild --release --locked --target aarch64-unknown-linux-gnu
+        env:
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+        run: cargo build --release --locked --target aarch64-unknown-linux-gnu
       - name: Stage artifact
         run: |
           mkdir -p dist
@@ -147,9 +153,10 @@ jobs:
           targets: ${{ matrix.target }}
       - name: Install Android NDK
         run: |
-          yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager "ndk;27.2.12479018" "platforms;android-34"
-          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> "$GITHUB_ENV"
+          curl -sL -o /tmp/android-ndk.zip "https://dl.google.com/android/repository/android-ndk-r26d-linux.zip"
+          mkdir -p "$HOME/android-ndk"
+          unzip -q /tmp/android-ndk.zip -d "$HOME/android-ndk"
+          echo "ANDROID_NDK_HOME=$HOME/android-ndk/android-ndk-r26d" >> "$GITHUB_ENV"
       - name: Build
         env:
           CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER: ${{ env.ANDROID_NDK_HOME }}/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android${{ env.ANDROID_API_LEVEL }}-clang
@@ -217,11 +224,29 @@ jobs:
           sed -i 's/^          //' package/godot-wasmtime.gdextension
       - name: Zip package
         run: cd package && zip -r ../godot-wasmtime-gdextension.zip .
+      - name: Resolve version
+        id: ver
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            V="${{ github.event.inputs.version }}"
+          else
+            V="${GITHUB_REF_NAME#v}"
+          fi
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "tag=v$V" >> "$GITHUB_OUTPUT"
       - name: GitHub Release
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: godot-wasmtime-gdextension.zip
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ steps.ver.outputs.tag }}" \
+            godot-wasmtime-gdextension.zip \
+            --repo "${{ github.repository }}" \
+            --title "godot-wasmtime ${{ steps.ver.outputs.version }}" \
+            --generate-notes \
+            --latest=false || \
+          gh release upload "${{ steps.ver.outputs.tag }}" \
+            godot-wasmtime-gdextension.zip \
+            --repo "${{ github.repository }}" --clobber
       - uses: actions/upload-artifact@v4
         with:
           name: godot-wasmtime-gdextension
