@@ -3,7 +3,7 @@ name = "godot-wasmtime"
 version = "0.1.0"
 edition = "2021"
 description = "Godot WASM UGC Runtime - GDExtension for executing sandboxed WASM mods with a GDScript-facing host API"
-license = "MIT OR Apache-2.0"
+license = "CC-BY-NC-SA-4.0"
 
 [lib]
 crate-type = ["cdylib"]
